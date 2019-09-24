@@ -19,23 +19,19 @@ func Valid(num string) bool {
 		}
 		// only increase numCount if it is a valid num
 		numCount++
+
 		if numCount%2 == 0 {
-			if num*2 > 9 {
-				numSum += num*2 - 9
-			} else {
-				numSum += num * 2
+			num *= 2
+			if num > 9 {
+				num -= 9
 			}
-		} else {
-			numSum += num
 		}
+		numSum += num
 	}
 
 	if numCount <= 1 {
 		return false
 	}
 
-	if numSum%10 != 0 {
-		return false
-	}
-	return true
+	return numSum%10 == 0
 }
