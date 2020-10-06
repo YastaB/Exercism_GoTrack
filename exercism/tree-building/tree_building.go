@@ -2,6 +2,7 @@ package tree
 
 import (
 	"errors"
+	"sort"
 )
 
 // Record is the items in array that will be converted to the tree
@@ -16,90 +17,76 @@ type Node struct {
 	Children []*Node
 }
 
-// findTheParent finds the parent of the record in the tree
-func findTheParent(root *Node, record Record) *Node {
-	curNode := root
-	if root.ID == record.Parent {
-		return curNode
-	}
-	for _, node := range root.Children {
-		found := findTheParent(node, record)
-		if found != nil {
-			return found
-		}
-	}
-	return nil
+type byID []Record
+
+func (records byID) Len() int {
+	return len(records)
 }
 
-// removeFromRecords remove efficiently without keeping the order
-func removeFromRecords(index int, slice []Record) ([]Record, error) {
-	if index >= len(slice) {
-		return nil, errors.New("cannot remove")
+func (records byID) Swap(i, j int) {
+	records[i], records[j] = records[j], records[i]
+}
+
+func (records byID) Less(i, j int) bool {
+	return records[i].ID < records[j].ID
+}
+
+func add(record Record, node *Node) (bool, error) {
+	if record.Parent == node.ID {
+		if node.Children == nil {
+			node.Children = []*Node{}
+		}
+		node.Children = append(node.Children, &Node{ID: record.ID})
+		return true, nil
 	}
-	slice[index] = slice[len(slice)-1]
-	slice[len(slice)-1] = Record{}
-	return slice[:len(slice)-1], nil
+
+	if node.Children == nil {
+		return false, nil
+	}
+
+	i := 0
+	isAdded := false
+	err := errors.New("")
+	for i < len(node.Children) && !isAdded {
+		isAdded, err = add(record, node.Children[i])
+		if err != nil {
+			return false, err
+		}
+		i++
+	}
+	return isAdded, nil
 }
 
 // Build convert records array to the tree
 func Build(records []Record) (*Node, error) {
+
+	if records == nil {
+		return nil, errors.New("records is nil")
+	}
 	if len(records) == 0 {
 		return nil, nil
 	}
-	var root *Node = nil
-	var err error = nil
-	// find the root
-	for i, record := range records {
-		if record.ID == 0 {
-			if record.Parent != 0 {
-				return nil, errors.New("root cannot have parent")
-			}
-			root = &Node{ID: 0}
-			records, err = removeFromRecords(i, records)
-			if err != nil {
-				return nil, err
-			}
-			break
-		}
-	}
-	if root == nil {
-		return nil, errors.New("root cannot be founded")
+
+	// sort by ID
+	sort.Sort(byID(records))
+
+	// check the root
+	if records[0].ID != 0 || records[0].Parent != 0 {
+		return nil, errors.New("there is no root, or root has a parent")
 	}
 
-	currentIndex := 1
-	found := true
-	for found && len(records) > 0 {
-		found = false
-		for i, record := range records {
-			if record.ID == currentIndex {
-				node := findTheParent(root, record)
-				if node == nil {
-					return nil, errors.New("not found")
-				}
-				if node.Children == nil {
-					node.Children = []*Node{}
-				} else {
-					// check for duplicate
-					for _, node := range node.Children {
-						if node.ID == record.ID {
-							return nil, errors.New("duplicate is found")
-						}
-					}
-				}
-				node.Children = append(node.Children, &Node{ID: record.ID})
-
-				// remove the founded one
-				records, err = removeFromRecords(i, records)
-				if err != nil {
-					return nil, err
-				}
-				currentIndex++
-				found = true
-			}
+	// check not continous
+	root := &Node{ID: 0}
+	i := 1
+	for i < len(records) {
+		if i != records[i].ID {
+			return nil, errors.New("not continuous")
 		}
-	}
-	if len(records) > 0 {
-		return nil, errors.New("cannot add")
+		isAdded, err := add(records[i], root)
+		if err != nil || !isAdded {
+			return nil, errors.New("cannot add")
+		}
+		i++
 	}
 	return root, nil
 }
