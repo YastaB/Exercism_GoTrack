@@ -1,14 +1,12 @@
 package main
 
-import "fmt"
+import (
 
-type Record struct {
-	ID int
-	Parent int
-}
+	"fmt"
+)
 
 func main(){
-	record := Record{ID:0}
-	fmt.Println(record)
-
+	for i:=0; i<100; i++ {
+		fmt.Println(robotname.GenRandomName())
+	}
 }
